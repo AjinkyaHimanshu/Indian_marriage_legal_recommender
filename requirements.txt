@@ -1,9 +1,0 @@
-pandas==2.2.2
-lxml
-beautifulsoup4
-requests
-rapidfuzz
-uv
-nltk
-pyyaml
-tqdm

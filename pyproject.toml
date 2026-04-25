@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "indian-marriage-legal-recommender"
+version = "0.1.0"
+description = "RAG-based legal recommender system"
+requires-python = ">=3.10,<3.13"
+
+dependencies = [
+    # -----------------------------
+    # Core
+    # -----------------------------
+    "pandas==2.2.2",
+    "numpy<2",
+    "lxml",
+    "beautifulsoup4",
+    "requests",
+    "rapidfuzz",
+    "python-dotenv",
+    "pyyaml",
+    "tqdm",
+
+    # -----------------------------
+    # PyTorch (Version-locked)
+    # -----------------------------
+    "torch==2.2.2",
+    "torchvision==0.17.2",
+    "torchaudio==2.2.2",
+
+    # -----------------------------
+    # Transformers & embeddings
+    # -----------------------------
+    "transformers==4.57.6",
+    "sentence-transformers==5.3.0",
+    "peft==0.11.1",
+    "einops==0.8.2",
+
+    # -----------------------------
+    # Vector DB & NLP
+    # -----------------------------
+    "qdrant-client==1.17.1",
+    "llama-index==0.10.30",
+    "llama-index-embeddings-huggingface",
+    "rank_bm25",
+    "nltk",
+
+    # -----------------------------
+    # UI & visualization
+    # -----------------------------
+    "ipywidgets",
+    "matplotlib",
+    "seaborn",
+    "streamlit",
+
+    # -----------------------------
+    # API clients
+    # -----------------------------
+    "groq==1.1.2",
+    "anthropic",
+
+    # -----------------------------
+    # Excel
+    # -----------------------------
+    "openpyxl",
+]
+
+[tool.uv]
+dev-dependencies = []
+
+# 1. Define the CUDA index but make it EXPLICIT
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true 
+
+# 2. Force ONLY PyTorch packages to use this index
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+torchvision = { index = "pytorch-cu121" }
+torchaudio = { index = "pytorch-cu121" }
+
+# 3. Tell the build system exactly where your code lives
+[tool.setuptools.packages.find]
+where = ["src"]

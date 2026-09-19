@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "indian-marriage-legal-recommender"
 version = "0.1.0"
-description = "RAG-based legal recommender system"
+description = "RAG-based Indian marriage-law legal assistant (LangChain + Anthropic Claude)"
 requires-python = ">=3.10,<3.13"
 
 dependencies = [
@@ -41,10 +41,18 @@ dependencies = [
     # Vector DB & NLP
     # -----------------------------
     "qdrant-client==1.17.1",
-    "llama-index==0.10.30",
-    "llama-index-embeddings-huggingface",
     "rank_bm25",
     "nltk",
+
+    # -----------------------------
+    # RAG framework: LangChain (industry standard)
+    # -----------------------------
+    "langchain>=0.3,<0.4",
+    "langchain-core>=0.3,<0.4",
+    "langchain-community>=0.3,<0.4",
+    "langchain-anthropic>=0.3,<0.4",
+    "langchain-huggingface>=0.1",
+    "langchain-qdrant>=0.2",
 
     # -----------------------------
     # UI & visualization
@@ -55,9 +63,8 @@ dependencies = [
     "streamlit",
 
     # -----------------------------
-    # API clients
+    # LLM provider: Anthropic Claude only
     # -----------------------------
-    "groq==1.1.2",
     "anthropic",
 
     # -----------------------------
@@ -66,21 +73,23 @@ dependencies = [
     "openpyxl",
 ]
 
+[dependency-groups]
+# Installed by default on `uv sync`; skip with `uv sync --no-dev`.
+dev = [
+    "jupyterlab",
+    "ipykernel",
+]
+
+# Use the OS trust store so uv works behind corporate TLS-inspecting proxies
+# (equivalent to passing --native-tls / --system-certs on every command).
 [tool.uv]
-dev-dependencies = []
+system-certs = true
 
-# 1. Define the CUDA index but make it EXPLICIT
-[[tool.uv.index]]
-name = "pytorch-cu121"
-url = "https://download.pytorch.org/whl/cu121"
-explicit = true 
+# PyTorch installs the CPU build from PyPI by default — this app does NOT require a
+# GPU. To switch to a CUDA build, see the "GPU / CUDA (optional)" section in README.md.
 
-# 2. Force ONLY PyTorch packages to use this index
-[tool.uv.sources]
-torch = { index = "pytorch-cu121" }
-torchvision = { index = "pytorch-cu121" }
-torchaudio = { index = "pytorch-cu121" }
-
-# 3. Tell the build system exactly where your code lives
+# Tell the build system exactly where your code lives
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["indian_marriage_legal_recommender*", "config*"]
+namespaces = false

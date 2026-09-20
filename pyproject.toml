@@ -21,6 +21,7 @@ dependencies = [
     "python-dotenv",
     "pyyaml",
     "tqdm",
+    "setuptools",
 
     # -----------------------------
     # PyTorch (Version-locked)
@@ -81,9 +82,9 @@ dev = [
 ]
 
 # Use the OS trust store so uv works behind corporate TLS-inspecting proxies
-# (equivalent to passing --native-tls / --system-certs on every command).
+# (equivalent to passing --native-tls on every command).
 [tool.uv]
-system-certs = true
+native-tls = true
 
 # PyTorch installs the CPU build from PyPI by default — this app does NOT require a
 # GPU. To switch to a CUDA build, see the "GPU / CUDA (optional)" section in README.md.

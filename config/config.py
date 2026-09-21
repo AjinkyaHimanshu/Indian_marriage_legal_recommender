@@ -33,6 +33,11 @@ DATA_DIR = ROOT_DIR / "data"
 LAWS_DIR = DATA_DIR / "base_chunked_marriage_laws"
 PROCESSED_DIR = DATA_DIR / "processed_data"
 DB_DIR = ROOT_DIR / "database" / "qdrant_db"
+# On-disk cache of query embeddings, so a query embedded once can be retrieved
+# again without re-loading the embedding model.
+EMBED_CACHE_DB = ROOT_DIR / "database" / "embedding_cache.sqlite"
+# Toggle the transparent embedding cache (set IMLR_EMBED_CACHE=0 to force re-embed).
+EMBED_CACHE_ENABLED = os.environ.get("IMLR_EMBED_CACHE", "1").strip() not in ("0", "false", "False", "")
 RESULTS_DIR = ROOT_DIR / "results"
 CONTEXTS_DIR = RESULTS_DIR / "contexts"
 EVALUATED_DIR = RESULTS_DIR / "evaluated"

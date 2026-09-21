@@ -21,7 +21,7 @@ from typing import Any, Dict, List
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, PrivateAttr
 
 from config import config
 from .embeddings import get_embeddings
@@ -69,7 +69,7 @@ class HybridLegalRetriever(BaseRetriever):
     top_k_initial: int = config.TOP_K_INITIAL
     top_k_final: int = config.TOP_K_FINAL
 
-    _profile: Any = Field(default=None, exclude=True)
+    _profile: Any = PrivateAttr(default=None)
 
     def __init__(self, **data: Any):
         super().__init__(**data)

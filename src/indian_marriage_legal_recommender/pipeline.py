@@ -28,6 +28,7 @@ class RAGResult:
 
     @property
     def sections(self) -> List[str]:
+        """Return the section header string for each retrieved document."""
         return [d.metadata.get("section", "") for d in self.documents]
 
 

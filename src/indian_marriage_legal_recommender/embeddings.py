@@ -35,10 +35,12 @@ class JinaV3Embeddings(Embeddings):
         self._model.max_seq_length = max_seq_length
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Encode passages using the ``retrieval.passage`` task prefix."""
         vecs = self._model.encode(list(texts), task="retrieval.passage")
         return [v.tolist() for v in vecs]
 
     def embed_query(self, text: str) -> List[float]:
+        """Encode a single search query using the ``retrieval.query`` task prefix."""
         return self._model.encode(text, task="retrieval.query").tolist()
 
 
@@ -57,11 +59,13 @@ class CachedEmbeddings(Embeddings):
         self._inner: Embeddings | None = None
 
     def _model(self) -> Embeddings:
+        """Return the inner ``Embeddings`` model, constructing it via ``factory`` on first call."""
         if self._inner is None:
             self._inner = self._factory()
         return self._inner
 
     def embed_query(self, text: str) -> List[float]:
+        """Return a cached vector for ``text``, embedding and storing it on a cache miss."""
         cached = embedding_cache.get(self._model_name, text)
         if cached is not None:
             return cached
@@ -70,11 +74,13 @@ class CachedEmbeddings(Embeddings):
         return vector
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Pass documents straight through to the inner model, bypassing the cache."""
         return self._model().embed_documents(texts)
 
 
 @lru_cache(maxsize=2)
 def _baseline() -> Embeddings:
+    """Return a cached ``HuggingFaceEmbeddings`` instance for ``all-MiniLM-L6-v2``."""
     from langchain_huggingface import HuggingFaceEmbeddings
 
     return HuggingFaceEmbeddings(
@@ -85,6 +91,7 @@ def _baseline() -> Embeddings:
 
 @lru_cache(maxsize=2)
 def _jina() -> Embeddings:
+    """Return a cached ``JinaV3Embeddings`` instance."""
     return JinaV3Embeddings()
 
 
@@ -102,4 +109,5 @@ def get_embeddings(embed_model: str) -> Embeddings:
 
 
 def for_profile(profile: "config.ConfigProfile") -> Embeddings:
+    """Return the appropriate cache-first ``Embeddings`` object for the given config profile."""
     return get_embeddings(profile.embed_model)

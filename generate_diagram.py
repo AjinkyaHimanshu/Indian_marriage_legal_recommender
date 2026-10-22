@@ -117,6 +117,7 @@ def section_header(ax, x, y, w, h, title, bg, border):
 
 
 def divider(ax, y, x0=0.4, x1=21.6):
+    """Draw a dashed horizontal divider line across the figure at height ``y``."""
     ax.plot([x0, x1], [y, y], color=C["divider"], lw=0.8, ls="--", zorder=1)
 
 
@@ -292,8 +293,8 @@ box(ax, 4.5,  15.5, 2.2, 0.7, "Vector Search",
 box(ax, 4.5,  16.3, 2.2, 0.7, "BM25",
     sublabel="Keyword matching",
     bg=C["retrieval_bg"], border=C["retrieval_border"], fontsize=8)
-box(ax, 7.2,  15.8, 2.8, 0.9, "Cross-Encoder\nRe-ranking",
-    sublabel="0.3·BM25 + 0.7·CE",
+box(ax, 7.2,  15.8, 2.8, 0.9, "Claude\nRe-ranking",
+    sublabel="0.3·BM25 + 0.7·Claude",
     bg=C["model_bg"], border=C["model_border"], fontsize=8.5)
 box(ax, 10.5, 15.8, 2.5, 0.9, "Parent-Child\nMerge",
     sublabel="Reconstruct sections",
@@ -395,14 +396,14 @@ arrow(ax, 2.5, 11.0, 5.0, 10.0, color=C["eval_border"])
 # PHASE 7 — STREAMLIT APP  (y 4.5 → 7.5)
 # ─────────────────────────────────────────────────────────────────────────────
 section_header(ax, 0.4, 7.55, 21.2, 0.65,
-               "STREAMLIT APP  (app.py · Jina Rechunked config)",
+               "STREAMLIT APP  (app.py · [default] jina_rechunked  |  [fallback] jina_unchunked)",
                bg=C["app_border"], border=C["app_border"])
 
 boxes_app = [
     ("User Question",         "Text area input",             0.6),
     ("Query Expansion",       "Claude (temp 0.2)",           3.8),
     ("Vector Search",         "jina-embeddings-v3",          7.0),
-    ("BM25 + CrossEncoder",   "Hybrid re-ranking",           10.2),
+    ("BM25 + Claude\nRe-ranking", "0.3·BM25 + 0.7·Claude Haiku", 10.2),
     ("Parent-Child Merge",    "Reconstruct sections",        13.4),
     ("Answer Generation",     "Claude (temp 0.2)",           16.6),
     ("Legal Answer",          "Grounded response",           19.8),
@@ -427,8 +428,8 @@ box(ax, 0.7, 4.5, 9.0, 0.95,
     bg=C["model_bg"], border=C["model_border"], fontsize=9)
 
 box(ax, 10.5, 4.5, 9.0, 0.95,
-    "Qdrant local DB  ·  legal_jina_chunked collection",
-    sublabel="database/qdrant_db/  ·  1024-dim vectors  ·  sliding-window chunks",
+    "Qdrant local DB  ·  legal_jina_chunked  |  legal_acts_jina",
+    sublabel="database/qdrant_db/  ·  1024-dim jina-embeddings-v3  ·  mode-selected at runtime",
     bg=C["db_bg"], border=C["db_border"], fontsize=9)
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -28,11 +28,13 @@ RETRIEVED CONTEXT:
 
 
 def _to_text(contexts: Sequence[Union[str, Document]]) -> str:
+    """Join contexts into a single newline-separated string, unwrapping ``Document.page_content``."""
     parts = [c.page_content if isinstance(c, Document) else str(c) for c in contexts]
     return "\n\n".join(parts)
 
 
 def build_chain(temperature: float = 0.2, max_tokens: int = 1024):
+    """Build and return the LCEL generation chain (prompt | Claude | string parser)."""
     prompt = ChatPromptTemplate.from_messages([("system", _SYSTEM), ("human", _HUMAN)])
     llm = shared_chat_model(temperature=temperature, max_tokens=max_tokens, model=config.CLAUDE_MODEL)
     return prompt | llm | StrOutputParser()
@@ -44,5 +46,6 @@ def generate_answer(
     temperature: float = 0.2,
     max_tokens: int = 1024,
 ) -> str:
+    """Generate a grounded legal answer from ``question`` using the retrieved ``contexts``."""
     chain = build_chain(temperature, max_tokens)
     return chain.invoke({"question": question, "context": _to_text(contexts)}).strip()

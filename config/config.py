@@ -62,7 +62,7 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 
 BASELINE_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # 384-dim
 JINA_EMBED_MODEL = "jinaai/jina-embeddings-v3"                    # 1024-dim
-CROSS_ENCODER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+RERANKER_MODEL = "claude-haiku-4-5-20251001"  # used in retrieval._claude_rerank
 
 BASELINE_DIM = 384
 JINA_DIM = 1024
@@ -83,7 +83,7 @@ CHUNK_OVERLAP = 50
 BASELINE_CHUNK_WINDOW = 400
 JINA_CHUNK_WINDOW = 1024
 
-# Hybrid retrieval scoring: final = BM25_W * bm25 + CE_W * cross_encoder
+# Hybrid retrieval scoring: final = BM25_W * bm25 + CE_W * claude_rerank
 BM25_WEIGHT = 0.3
 CE_WEIGHT = 0.7
 TOP_K_INITIAL = 10   # candidate pool pulled from the vector store
@@ -103,7 +103,7 @@ class ConfigProfile:
     dim: int
     chunked: bool
     use_expanded_query: bool  # rechunked configs retrieve with the expanded query
-    hybrid: bool              # rechunked configs add BM25 + cross-encoder re-ranking
+    hybrid: bool              # rechunked configs add BM25 + Claude re-ranking
 
 
 PROFILES: dict[str, ConfigProfile] = {
@@ -135,6 +135,7 @@ class Settings:
 
 
 def _load_yaml() -> dict:
+    """Load and return the YAML config file, or an empty dict if the file does not exist."""
     if CONFIG_FILE.exists():
         with open(CONFIG_FILE, "r", encoding="utf-8") as fh:
             return yaml.safe_load(fh) or {}
@@ -169,6 +170,7 @@ def require_anthropic_key(settings: Optional[Settings] = None) -> str:
 
 
 def profile(key: str = DEFAULT_CONFIG) -> ConfigProfile:
+    """Return the ``ConfigProfile`` for ``key``, raising ``KeyError`` for unknown keys."""
     if key not in PROFILES:
         raise KeyError(f"Unknown config '{key}'. Choose from {list(PROFILES)}.")
     return PROFILES[key]

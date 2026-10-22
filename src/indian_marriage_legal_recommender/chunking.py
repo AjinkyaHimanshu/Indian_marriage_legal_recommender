@@ -16,6 +16,7 @@ from config import config
 
 @lru_cache(maxsize=4)
 def _tokenizer(model_name: str):
+    """Return a cached ``AutoTokenizer`` for ``model_name``, loading it on first call."""
     from transformers import AutoTokenizer
 
     return AutoTokenizer.from_pretrained(model_name)

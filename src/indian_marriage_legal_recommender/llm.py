@@ -38,6 +38,7 @@ def get_chat_model(
 
 @lru_cache(maxsize=8)
 def _cached(model: str, temperature: float, max_tokens: int) -> ChatAnthropic:
+    """Return a cached ``ChatAnthropic`` instance; creates a new one on the first call per argument set."""
     return get_chat_model(model=model, temperature=temperature, max_tokens=max_tokens)
 
 

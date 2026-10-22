@@ -3,7 +3,7 @@
 All logic lives in the ``indian_marriage_legal_recommender`` package; this file only
 wires the LangChain + Claude pipeline to a UI.
 
-    Configuration : Jina Rechunked (jina-embeddings-v3 + hybrid retrieval)
+    Configuration : jina_rechunked (default) | jina_unchunked (precision fallback)
     Framework     : LangChain
     LLM           : Anthropic Claude (claude-sonnet-4-6)
 
@@ -24,6 +24,7 @@ _orig_create_ctx = ssl.create_default_context
 
 
 def _no_verify_ctx(*args, **kwargs):
+    """Return an SSL context with hostname and certificate verification disabled."""
     ctx = _orig_create_ctx(*args, **kwargs)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -38,6 +39,7 @@ _orig_send = HTTPAdapter.send
 
 
 def _patched_send(self, request, **kwargs):
+    """Force ``verify=False`` on every outbound request to bypass SSL certificate checks."""
     kwargs["verify"] = False
     return _orig_send(self, request, **kwargs)
 
@@ -64,19 +66,43 @@ except RuntimeError as exc:
     st.stop()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
+_PROFILE_OPTIONS = {
+    "jina_rechunked": "⭐ Jina Rechunked — best chunk quality (recommended)",
+    "jina_unchunked": "🎯 Jina Unchunked — best rank-1 precision (fallback)",
+}
+
 with st.sidebar:
     st.title("⚖️ Indian Marriage Law Assistant")
+    st.markdown("---")
+
+    st.markdown("### Retrieval Mode")
+    selected_profile = st.radio(
+        "Choose configuration",
+        options=list(_PROFILE_OPTIONS.keys()),
+        format_func=lambda k: _PROFILE_OPTIONS[k],
+        index=0,
+        help=(
+            "**Jina Rechunked** (recommended): sliding-window chunks + BM25 + Claude re-ranking. "
+            "Returns the highest-quality individual chunks.\n\n"
+            "**Jina Unchunked** (fallback): plain semantic top-k on full sections. "
+            "More reliable when rank-1 precision matters."
+        ),
+    )
+
+    prof = config.profile(selected_profile)
+    retrieval_mode = "Vector + BM25 + Claude re-ranking" if prof.hybrid else "Vector (semantic top-k)"
+
     st.markdown("---")
     st.markdown("### Configuration")
     st.markdown(
         f"""
 | Setting | Value |
 |---------|-------|
-| **Config** | Jina Rechunked |
+| **Config** | `{selected_profile}` |
 | **Framework** | `LangChain` |
 | **Embedding** | `jina-embeddings-v3` |
-| **Collection** | `{config.profile('jina_rechunked').collection}` |
-| **Retrieval** | Vector + BM25 + CrossEncoder |
+| **Collection** | `{prof.collection}` |
+| **Retrieval** | {retrieval_mode} |
 | **LLM Provider** | `anthropic` |
 | **LLM Model** | `{config.CLAUDE_MODEL}` |
 """
@@ -85,7 +111,7 @@ with st.sidebar:
     st.markdown("### How it works")
     st.markdown(
         "Your question is **expanded** into legal terminology, then a **hybrid search** "
-        "(vector + BM25 + Cross-Encoder) retrieves the most relevant legal sections. "
+        "(vector + BM25 + Claude re-ranking) retrieves the most relevant legal sections. "
         "Those sections are reconstructed from their chunk fragments and passed to Claude, "
         "which answers **grounded strictly in the retrieved law** — no hallucination."
     )
@@ -116,7 +142,7 @@ if st.button("Ask ⚖️", type="primary"):
 
     with st.status("Processing your question…", expanded=True) as status:
         st.write("🔍 Expanding query · 📚 Retrieving sections · ✍️ Generating answer…")
-        result = answer(question, profile_key="jina_rechunked", top_k=top_k)
+        result = answer(question, profile_key=selected_profile, top_k=top_k)
         t = result.timings
         status.update(
             label=(

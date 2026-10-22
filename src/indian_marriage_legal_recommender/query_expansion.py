@@ -40,6 +40,7 @@ EXPANDED SEARCH QUERY:"""
 
 
 def build_chain(temperature: float = 0.2):
+    """Build and return the LCEL (LangChain Expression Language) query-expansion chain (prompt | Claude | string parser)."""
     prompt = ChatPromptTemplate.from_messages([("system", _SYSTEM), ("human", _HUMAN)])
     llm = shared_chat_model(temperature=temperature, max_tokens=256, model=config.CLAUDE_MODEL)
     return prompt | llm | StrOutputParser()

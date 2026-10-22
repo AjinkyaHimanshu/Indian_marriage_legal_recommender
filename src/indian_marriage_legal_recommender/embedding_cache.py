@@ -25,6 +25,7 @@ _LOCK = threading.Lock()
 
 
 def _key(model_name: str, text: str) -> str:
+    """Return a stable SHA-256 hex digest keyed by ``(model_name, text)``."""
     return hashlib.sha256(f"{model_name}\x00{text}".encode("utf-8")).hexdigest()
 
 

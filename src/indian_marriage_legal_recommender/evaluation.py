@@ -38,6 +38,7 @@ Output ONLY valid JSON of the form:
 
 
 def _texts(contexts: Sequence[Union[str, Document]]) -> List[str]:
+    """Extract plain text strings from a sequence of ``Document`` objects or raw strings."""
     return [c.page_content if isinstance(c, Document) else str(c) for c in contexts]
 
 
@@ -62,6 +63,7 @@ def score_relevance(query: str, contexts: Sequence[Union[str, Document]]) -> Lis
 
 
 def _extract_json(text: str) -> str:
+    """Strip markdown code fences and return the first JSON object found in ``text``."""
     text = text.strip()
     if text.startswith("```"):
         text = text.split("```")[1]
@@ -72,9 +74,12 @@ def _extract_json(text: str) -> str:
 
 
 def _dcg(scores: Sequence[float]) -> float:
+    """Compute Discounted Cumulative Gain for a ranked list of relevance scores."""
+    # Standard DCG: rel_i / log2(pos+1), where pos is 1-indexed.
+    # With 0-indexed i: discount = log2(i+2). At i=0, log2(2)=1 so no discount for rank 1.
     total = 0.0
     for i, s in enumerate(scores):
-        total += s if i == 0 else s / math.log2(i + 1)
+        total += s / math.log2(i + 2)
     return total
 
 

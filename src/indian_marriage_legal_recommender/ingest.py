@@ -52,6 +52,7 @@ def load_sections() -> List[Dict]:
 
 
 def save_sections_checkpoint(sections: List[Dict]) -> None:
+    """Persist the loaded section list to ``CHUNKED_LAWS_JSON`` for downstream reuse."""
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     out = config.CHUNKED_LAWS_JSON
     with open(out, "w", encoding="utf-8") as fh:
@@ -60,6 +61,7 @@ def save_sections_checkpoint(sections: List[Dict]) -> None:
 
 # ── Collection builders ───────────────────────────────────────────────────────
 def _upsert(collection: str, points: List[PointStruct], batch: int = 100) -> None:
+    """Batch-upsert ``points`` into ``collection`` in chunks of ``batch`` to avoid timeouts."""
     client = get_client()
     for i in range(0, len(points), batch):
         client.upsert(collection_name=collection, points=points[i : i + batch])

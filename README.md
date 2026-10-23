@@ -2,7 +2,7 @@
 
 A Retrieval-Augmented Generation (RAG) system that answers questions about Indian
 marriage laws. It indexes 40+ Indian marriage statutes, retrieves relevant legal
-sections using dense retrieval + BM25 + Cross-Encoder reranking, and generates
+sections using dense retrieval + BM25 + Claude re-ranking (Haiku), and generates
 grounded plain-English answers.
 
 **Built on [LangChain](https://python.langchain.com/) with [Anthropic Claude](https://www.anthropic.com/claude) as the only LLM provider.**
@@ -22,7 +22,7 @@ man without converting?"* and the system:
 
 1. **Expands** the question into formal legal terminology (Claude via LangChain).
 2. **Retrieves** relevant sections from a Qdrant vector database (dense search →
-   BM25 → Cross-Encoder re-ranking).
+   BM25 → Claude re-ranking).
 3. **Reconstructs** full legal sections from chunk fragments (parent-child merge).
 4. **Generates** a plain-English answer grounded strictly in the retrieved law
    (Claude).
@@ -37,19 +37,24 @@ man without converting?"* and the system:
 User Question
       │
       ▼
-Query Expansion ───────── Claude (claude-sonnet-4-6) via langchain-anthropic
+  [Sidebar] Retrieval Mode
+  ├── ⭐ jina_rechunked  (default — best chunk quality)
+  └── 🎯 jina_unchunked  (fallback — best rank-1 precision)
       │
+      ▼
+Query Expansion ─────── Claude (claude-sonnet-4-6) via langchain-anthropic
+      │                  [rechunked only — uses expanded query for retrieval]
       ▼
 Hybrid Retrieval  (LangChain HybridLegalRetriever)
-  ├── Vector Search ───── jina-embeddings-v3 → Qdrant
-  ├── BM25 Keyword Search
-  └── Cross-Encoder Re-ranking ── ms-marco-MiniLM-L-6-v2
+  ├── Vector Search ──── jina-embeddings-v3 → Qdrant
+  ├── BM25 Keyword Search  [rechunked only]
+  └── Claude Re-ranking ── claude-haiku-4-5 · single batched call  [rechunked only]
       │
       ▼
-Parent-Child Merge  (rebuild full section from chunks)
+Parent-Child Merge  (rebuild full sections from chunks)  [rechunked only]
       │
       ▼
-Answer Generation ─────── Claude (grounded, temperature 0.2)
+Answer Generation ────── Claude (grounded, temperature 0.2)
       │
       ▼
 Answer
@@ -63,7 +68,7 @@ Answer
 | Prompts + chains | `ChatPromptTemplate` + LCEL (`prompt \| llm \| parser`) |
 | Embeddings | `langchain_huggingface.HuggingFaceEmbeddings` + custom `JinaV3Embeddings` |
 | Retriever | custom `BaseRetriever` (`HybridLegalRetriever`) |
-| Cross-encoder reranker | `langchain_community.cross_encoders.HuggingFaceCrossEncoder` |
+| Re-ranker | Claude Haiku (`claude-haiku-4-5-20251001`) via `langchain_anthropic.ChatAnthropic` |
 | Vector store | `langchain_qdrant.QdrantVectorStore` (+ raw `qdrant-client` for hybrid search) |
 | Documents | `langchain_core.documents.Document` |
 
@@ -76,7 +81,7 @@ Answer
 | Jina Rechunked | `jina-embeddings-v3` | Sliding-window chunks + hybrid retrieval | Expanded query |
 | Baseline Rechunked | `all-MiniLM-L6-v2` | Sliding-window chunks + hybrid retrieval | Expanded query |
 
-The Streamlit app uses **Jina Rechunked** (full hybrid, chunk-aware workflow).
+The Streamlit app exposes two selectable modes: **Jina Rechunked** (default — best chunk quality) and **Jina Unchunked** (fallback — best rank-1 precision).
 
 ---
 
@@ -132,8 +137,8 @@ locked dependency set (`uv.lock`) are committed, so installs are reproducible.
 ### Prerequisites
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) (`0.12+`)
 - An **Anthropic API key**
-- **No GPU required.** PyTorch installs as the CPU build; the embedding and
-  cross-encoder models run fine on CPU (a GPU only speeds up bulk re-indexing).
+- **No GPU required.** PyTorch installs as the CPU build; the embedding models
+  run fine on CPU (a GPU only speeds up bulk re-indexing).
 
 ### Install
 
@@ -204,12 +209,10 @@ anthropic:
 ```bash
 uv run streamlit run app.py
 ```
-Opens at `http://localhost:8501`. First load takes a minute while Jina v3 and the
-Cross-Encoder load into memory. Requires the Qdrant collections to be populated
+Opens at `http://localhost:8501`. First load takes a moment while Jina v3 loads into memory. Requires the Qdrant collections to be populated
 (they ship in `database/qdrant_db/`; rebuild with notebooks 2–3 if needed).
 
-**Features:** plain-English Q&A · adjustable top-k · toggle retrieved sections ·
-toggle expanded query.
+**Features:** plain-English Q&A · **retrieval mode selector** (Jina Rechunked / Jina Unchunked) · adjustable top-k · toggle retrieved sections · toggle expanded query.
 
 ### Using the pipeline directly
 
@@ -233,8 +236,8 @@ Launch Jupyter through uv so it uses the project environment:
 uv run jupyter lab        # or: uv run jupyter notebook
 ```
 
-The pipeline is split across two machines: embedding models (Jina v3, Cross-Encoder)
-want RAM/GPU, while generation + evaluation only need a Claude API key.
+The pipeline is split across two machines: embedding models (Jina v3) want RAM/GPU,
+while generation + evaluation only need a Claude API key.
 
 **Machine 2 (models + Qdrant):**
 ```
@@ -267,12 +270,14 @@ scenarios.
 
 Saved aggregate results (`results/evaluated/`):
 
-| Configuration | Avg nDCG | Avg Relevance | Avg Latency (s) |
-|---|---:|---:|---:|
-| Baseline Unchunked | 0.8645 | 1.4244 | 10.50 |
-| Baseline Rechunked | 0.9415 | 1.3844 | 17.89 |
-| Jina Unchunked | 0.9589 | 1.8500 | 10.68 |
-| Jina Rechunked | 0.8685 | 1.7011 | 18.69 |
+| Configuration | Avg nDCG | Avg Relevance | Avg Latency (s) | Best at |
+|---|---:|---:|---:|---|
+| Baseline Unchunked | 0.8116 | 1.1867 | 12.68 | Most consistent nDCG (std 0.17) |
+| Baseline Rechunked | **0.8844** | 1.3500 | 11.98 | Highest ranking quality |
+| Jina Unchunked | 0.7751 | 1.0667 | 13.17 | Best MRR / P@K / HR@K |
+| Jina Rechunked | 0.8017 | **1.5588** | **11.59** | Best chunk quality · lowest p95 latency |
+
+> Re-ranking uses **Claude Haiku** (`claude-haiku-4-5-20251001`) — one batched API call per query, replacing the previous local cross-encoder (`ms-marco-MiniLM-L-6-v2`).
 
 ---
 
@@ -292,10 +297,12 @@ Saved aggregate results (`results/evaluated/`):
 - **Claude only.** All LLM calls (expansion, generation, LLM-as-judge) route through
   `langchain_anthropic.ChatAnthropic`. No Groq/Llama fallback.
 - **LangChain as the RAG framework.** Retrieval is a first-class `BaseRetriever`;
-  prompts are LCEL chains; embeddings and the cross-encoder are LangChain components.
-- **Hybrid retrieval for chunked configs.** `final = 0.3·BM25 + 0.7·CrossEncoder`
+  prompts are LCEL chains; embeddings are LangChain components.
+- **Hybrid retrieval for chunked configs.** `final = 0.3·BM25 + 0.7·Claude`
   balances lexical precision (act names, section numbers) with semantic depth.
 - **Parent-child merge.** Chunks are re-assembled into full sections before hitting
   the LLM so the answer sees coherent statutory context.
 - **Grounded generation.** The prompt forces Claude to answer only from retrieved
   context and to say when the corpus does not cover the question.
+- **Dual retrieval modes in the app.** The Streamlit UI exposes a sidebar toggle: `jina_rechunked` (default — highest chunk quality, Claude Haiku re-ranking) and `jina_unchunked` (fallback — best rank-1 precision, plain semantic top-k). Both use `jina-embeddings-v3`.
+- **Claude Haiku as re-ranker.** The local `cross-encoder/ms-marco-MiniLM-L-6-v2` (requires HuggingFace download) has been replaced with a single batched Claude Haiku API call — no local model download required, works on corporate-restricted networks.

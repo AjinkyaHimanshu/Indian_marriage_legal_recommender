@@ -6,6 +6,7 @@ LangChain components together and reports per-stage timings.
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass, field
 from typing import List
@@ -13,9 +14,12 @@ from typing import List
 from langchain_core.documents import Document
 
 from config import config
+from .demo_cache import get as _cache_get, put as _cache_put
 from .generation import generate_answer
 from .query_expansion import expand_query
 from .retrieval import get_retriever
+
+DEMO_MODE = os.environ.get("DEMO_MODE", "0").strip() in ("1", "true", "True")
 
 
 @dataclass
@@ -39,6 +43,34 @@ def answer(
     top_k: int = config.TOP_K_FINAL,
 ) -> RAGResult:
     """Run the full pipeline for one question and return a structured result."""
+    # ── Cache check (always — saves API calls; required in DEMO_MODE) ─────────
+    cached = _cache_get(question, profile_key, top_k)
+    if cached:
+        return RAGResult(
+            question=cached["question"],
+            expanded_query=cached["expanded_query"],
+            answer=cached["answer"],
+            documents=[
+                Document(page_content=d["page_content"], metadata=d["metadata"])
+                for d in cached["documents"]
+            ],
+            timings=cached["timings"],
+        )
+
+    if DEMO_MODE:
+        return RAGResult(
+            question=question,
+            expanded_query=question,
+            answer=(
+                "⚠️ This question is not in the demo cache.\n\n"
+                "Run `python demo/build_demo_cache.py` on a machine with API access "
+                "to add it, then commit `demo/demo_cache.json`."
+            ),
+            documents=[],
+            timings={"expand": 0.0, "retrieve": 0.0, "generate": 0.0},
+        )
+    # ─────────────────────────────────────────────────────────────────────────
+
     prof = config.profile(profile_key)
     timings: dict = {}
 
@@ -64,10 +96,12 @@ def answer(
         )
     timings["generate"] = time.perf_counter() - t2
 
-    return RAGResult(
+    result = RAGResult(
         question=question,
         expanded_query=expanded,
         answer=text,
         documents=docs,
         timings=timings,
     )
+    _cache_put(question, profile_key, top_k, result)
+    return result

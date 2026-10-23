@@ -52,18 +52,21 @@ import os  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from config import config  # noqa: E402
-from indian_marriage_legal_recommender.pipeline import answer  # noqa: E402
+from indian_marriage_legal_recommender.pipeline import answer, DEMO_MODE  # noqa: E402
 
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
 
 st.set_page_config(page_title="Indian Marriage Law Assistant", page_icon="⚖️", layout="wide")
 
-# ── Verify the Claude key up front ────────────────────────────────────────────
-try:
-    config.require_anthropic_key()
-except RuntimeError as exc:
-    st.error(str(exc))
-    st.stop()
+# ── Verify the Claude key up front (skipped in DEMO_MODE) ────────────────────
+if DEMO_MODE:
+    st.warning("🎬 **Demo Mode** — responses are served from cache. No API calls are made.")
+else:
+    try:
+        config.require_anthropic_key()
+    except RuntimeError as exc:
+        st.error(str(exc))
+        st.stop()
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 _PROFILE_OPTIONS = {
